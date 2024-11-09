@@ -59,7 +59,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/crsystal1", "data_3 tes 0912873", 0, 1, 0);
+        msg_id = esp_mqtt_client_publish(client, "/topic/crsystal1", "MQTT Connected", 0, 1, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
         msg_id = esp_mqtt_client_subscribe(client, "/topic/crsystal0", 0);
@@ -77,7 +77,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/crsystal0", "data tes 78123", 0, 0, 0);
+        msg_id = esp_mqtt_client_publish(client, "/topic/crsystal0", "MQTT Subscribed", 0, 0, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
@@ -162,7 +162,7 @@ void sendDataToMQTTTask(void *pvParameters)
     // Get data from Param
     char *data = (char *)pvParameters;
 
-    ESP_LOGI(TAG, "Sending data to MQTT");
+    ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
     
     // Send data to MQTT
     int msg_id = esp_mqtt_client_publish(client, "/topic/crsystal1", data, 0, 1, 0);
@@ -203,18 +203,6 @@ void app_main(void)
     esp_mqtt_client_start(client);
 
 
-    // // Create a task to send data to MQTT
-    // xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, NULL, 5, NULL);
-
-    // send data 3 times to MQTT with 5 seconds interval usuing task
-    for (int i = 0; i < 3; i++)
-    {
-        char data[50];
-        sprintf(data, "for data_3 tes 0912873 %d", i);
-        xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, data, 5, NULL);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-    }
-
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
@@ -222,4 +210,17 @@ void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     mqtt_app_start();
+
+    // // Create a task to send data to MQTT
+    // xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, NULL, 5, NULL);
+
+    // send data 3 times to MQTT with 5 seconds interval usuing task
+    for (int i = 0; i < 3; i++)
+    {
+        // Send data to MQTT
+        char data[50];
+        sprintf(data, "DATA DARI TASK KEKIRIM %d", i);
+        xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, data, 5, NULL);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
 }
