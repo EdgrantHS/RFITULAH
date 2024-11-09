@@ -31,7 +31,7 @@
 #include "mqtt_client.h"
 
 static const char *TAG = "CrystalMQTT";
-
+static esp_mqtt_client_handle_t client;
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -143,6 +143,34 @@ static void mqtt_app_start(void)
     esp_mqtt_client_start(client);
 }
 
+// void sendDataToMQTTTask(void *pvParameters)
+// {
+//     while (1)
+//     {
+//         ESP_LOGI(TAG, "Sending data to MQTT");
+        
+//         // Send data to MQTT
+//         int msg_id = esp_mqtt_client_publish(client, "/topic/crsystal1", "test function data_3 tes 0912873", 0, 1, 0);
+//         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+
+//         vTaskDelay(5000 / portTICK_PERIOD_MS);
+//     }
+// }
+
+void sendDataToMQTTTask(void *pvParameters)
+{
+    // Get data from Param
+    char *data = (char *)pvParameters;
+
+    ESP_LOGI(TAG, "Sending data to MQTT");
+    
+    // Send data to MQTT
+    int msg_id = esp_mqtt_client_publish(client, "/topic/crsystal1", data, 0, 1, 0);
+    ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -160,6 +188,32 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+
+    //configuring the mqtt client
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = CONFIG_BROKER_URL,
+    };
+
+    //initialize the mqtt client
+    client = esp_mqtt_client_init(&mqtt_cfg);
+
+    //register the event handler
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(client);
+
+
+    // // Create a task to send data to MQTT
+    // xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, NULL, 5, NULL);
+
+    // send data 3 times to MQTT with 5 seconds interval usuing task
+    for (int i = 0; i < 3; i++)
+    {
+        char data[50];
+        sprintf(data, "for data_3 tes 0912873 %d", i);
+        xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, data, 5, NULL);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
