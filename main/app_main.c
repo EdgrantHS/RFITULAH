@@ -33,6 +33,8 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
+#include "protocol_examples_common.h"
+
 #define GPS_UART_NUM UART_NUM_2
 #define GPS_TX_PIN (GPIO_NUM_17)
 #define GPS_RX_PIN (GPIO_NUM_16)
@@ -84,9 +86,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/crsystal0", "MQTT Subscribed", 0, 0, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        // ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+        // msg_id = esp_mqtt_client_publish(client, "/topic/crsystal0", "MQTT Subscribed", 0, 0, 0);
+        // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -195,20 +197,20 @@ void uart_init() {
     uart_set_pin(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
 
-// function to read GPS data and return it
-char *read_gps_data() {
-    uint8_t data[BUF_SIZE];
-    int length = 0;
+// // function to read GPS data and return it
+// char *read_gps_data() {
+//     uint8_t data[BUF_SIZE];
+//     int length = 0;
 
-    length = uart_read_bytes(GPS_UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
-    if (length > 0) {
-        data[length] = '\0';  // Null-terminate the string
-        return (char *)data;  // Return NMEA data
-    }
-    else {
-        return NULL;
-    }
-}
+//     length = uart_read_bytes(GPS_UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+//     if (length > 0) {
+//         data[length] = '\0';  // Null-terminate the string
+//         return (char *)data;  // Return NMEA data
+//     }
+//     else {
+//         return NULL;
+//     }
+// }
 
 void gps_read_data() {
     printf("GPS data reading task started in task\n");
@@ -248,6 +250,13 @@ void sendCoordinatesToMQTTTask(void *pvParameters)
     // char *data = read_gps_data(); // memalsukan data
     char *data = "{Latitude: -6.362352, Longitude: 106.824207}"; // data yang dipalsukan
 
+    //wait until wifi is connected
+    while (esp_wifi_connect() != ESP_OK)
+    {
+        printf("Waiting for wifi to connect...\n");
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
     // Send data to MQTT
     int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
 
@@ -277,9 +286,10 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    printf("Starting UART driver...\n");
-    uart_init();
-    printf("UART driver started\n");
+    // untuk gps
+    // printf("Starting UART driver...\n");
+    // uart_init();
+    // printf("UART driver started\n");
 
     //configuring the mqtt client
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -298,24 +308,22 @@ void app_main(void)
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
      */
-    // ESP_ERROR_CHECK(example_connect());
+    ESP_ERROR_CHECK(example_connect());
 
     mqtt_app_start();
 
-    printf("Starting GPS data reading task...\n");
-    xTaskCreate(gps_read_data, "gps_read_data", 4096, NULL, 10, NULL);
-    printf("GPS data reading task started\n");
+    // printf("Starting GPS data reading task...\n");
+    // xTaskCreate(gps_read_data, "gps_read_data", 4096, NULL, 10, NULL);
+    // printf("GPS data reading task started\n");
 
     // // Create a task to send data to MQTT
     // xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, NULL, 5, NULL);
 
-    // // send data 3 times to MQTT with 5 seconds interval usuing task
-    // for (int i = 0; i < 3; i++)
-    // {
-    //     // Send data to MQTT
-    //     char data[50];
-    //     sprintf(data, "DATA DARI TASK KEKIRIM %d", i);
-    //     xTaskCreate(&sendDataToMQTTTask, "sendDataToMQTTTask", 2048, data, 5, NULL);
-    //     vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // }
+    // send gps data to mqtt 3 times
+    for (int i = 0; i < 3; i++)
+    {
+        // Create a task to send data to MQTT
+        xTaskCreate(&sendCoordinatesToMQTTTask, "sendCoordinatesToMQTTTask", 2048, NULL, 5, NULL);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
 }
