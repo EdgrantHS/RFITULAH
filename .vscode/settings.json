@@ -8,7 +8,8 @@
     },
     "idf.espIdfPathWin": "c:\\Users\\edgra\\Amamya\\03_Apps\\02_IOT\\ESPIDF\\v4.4.2\\esp-idf",
     "idf.openOcdConfigs": [
-        "board/esp32-wrover-kit-3.3v.cfg"
+        "interface/ftdi/esp32_devkitj_v1.cfg",
+        "target/esp32s3.cfg"
     ],
     "idf.portWin": "COM8",
     "idf.pythonBinPathWin": "C:\\Users\\edgra\\.espressif\\python_env\\idf4.4_py3.8_env\\Scripts\\python.exe",
