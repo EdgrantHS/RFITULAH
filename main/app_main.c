@@ -203,7 +203,7 @@ char *read_gps_data() {
     length = uart_read_bytes(GPS_UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
     if (length > 0) {
         data[length] = '\0';  // Null-terminate the string
-        return (char *)data;
+        return (char *)data;  // Return NMEA data
     }
     else {
         return NULL;
@@ -245,10 +245,14 @@ void sendCoordinatesToMQTTTask(void *pvParameters)
     char *topic = "/topic/crsystal1";
 
     // Get data from function
-    char *data = read_gps_data();
+    // char *data = read_gps_data(); // memalsukan data
+    char *data = "{Latitude: -6.362352, Longitude: 106.824207}"; // data yang dipalsukan
 
     // Send data to MQTT
     int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
+
+    // Log the data
+    ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
     // Delete the task
     vTaskDelete(NULL);
